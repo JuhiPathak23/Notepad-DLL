@@ -1,0 +1,80 @@
+#include <windows.h>
+#include <stdio.h>
+
+// Constants
+#define IDM_CUSTOM_COMMAND 1000 // Example custom command ID
+
+// Function prototypes
+BOOL InstallHooks(HWND hwndNotepad);
+void UninstallHooks();
+LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+// Global variables
+WNDPROC g_OldWndProc = NULL;
+HWND g_hwndNotepad = NULL;
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            // Initialize DLL
+            printf("Notepad DLL attached.\n");
+            break;
+
+        case DLL_PROCESS_DETACH:
+            // Cleanup
+            UninstallHooks();
+            printf("Notepad DLL detached.\n");
+            break;
+
+        case DLL_THREAD_ATTACH:
+            // Thread-specific initialization
+            break;
+
+        case DLL_THREAD_DETACH:
+            // Thread-specific cleanup
+            break;
+    }
+    
+    return TRUE; // Return TRUE upon success
+}
+
+BOOL InstallHooks(HWND hwndNotepad) {
+    g_hwndNotepad = hwndNotepad;
+    g_OldWndProc = (WNDPROC)SetWindowLongPtr(hwndNotepad, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
+    return (g_OldWndProc != NULL);
+}
+
+void UninstallHooks() {
+    if (g_hwndNotepad != NULL && g_OldWndProc != NULL) {
+        SetWindowLongPtr(g_hwndNotepad, GWLP_WNDPROC, (LONG_PTR)g_OldWndProc);
+        g_hwndNotepad = NULL;
+        g_OldWndProc = NULL;
+    }
+}
+
+LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    // Handle custom messages or manipulate text here
+    switch (uMsg) {
+        // Example: Intercept WM_COMMAND messages for custom menu item
+        case WM_COMMAND:
+            {
+                int wmId = LOWORD(wParam);
+                // Handle custom menu item command here
+                switch (wmId) {
+                    case IDM_CUSTOM_COMMAND:
+                        // Implement custom functionality
+                        MessageBox(hwnd, "Custom command executed!", "Notepad DLL", MB_OK | MB_ICONINFORMATION);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+        
+        default:
+            break;
+    }
+    
+    // Call the original window procedure for default behavior
+    return CallWindowProc(g_OldWndProc, hwnd, uMsg, wParam, lParam);
+}
